@@ -23,7 +23,7 @@ extern "C" {
 
 /* Libtea Common Functionality */
 
-#include <stddef.h>   //For size_t
+#include "stddef.h"   //For size_t
 
 /**
  * Structure to get/set system registers

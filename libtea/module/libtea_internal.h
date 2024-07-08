@@ -4,7 +4,7 @@
 #ifndef LIBTEA_INTERNAL_H
 #define LIBTEA_INTERNAL_H
 
-#include <stddef.h>
+#include "stddef.h"
 #include "../libtea_config.h"
 #include "libtea_ioctl.h"
 
