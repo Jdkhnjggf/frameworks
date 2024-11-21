@@ -28,9 +28,9 @@ void libtea__assert_pinned_to_core() {
 
 void libtea__interrupts_init(){
   /* Ensure IRQ handler asm code is not subject to demand-paging */
-  libtea_info("Locking IRQ handler pages %p/%p", &libtea_ss_irq_handler, &libtea_ss_irq_fired);
-  libtea_assert( !mlock(&libtea_ss_irq_handler, 4096) );
-  libtea_assert( !mlock((void*) &libtea_ss_irq_fired, 4096) );
+  // libtea_info("Locking IRQ handler pages %p/%p", &libtea_ss_irq_handler, &libtea_ss_irq_fired);
+  // libtea_assert( !mlock(&libtea_ss_irq_handler, 4096) );
+  // libtea_assert( !mlock((void*) &libtea_ss_irq_fired, 4096) );
 }
 
 
@@ -53,7 +53,7 @@ void libtea_map_gdt(libtea_instance* instance, libtea_gdt* gdt) {
   int entries = ((gdtr.size)+1)/sizeof(libtea_seg_descriptor);
   print_descriptor_table_register(&gdtr, entries);
   libtea_assert(gdtr.address);
-  gdtr.address &= 0x7fffffffffff;
+  gdtr.address &= 0x7ffffffffffff;
 
   void* gdt_vaddr = libtea_remap_address(instance, gdtr.address, LIBTEA_PAGE, 4096, PROT_READ | PROT_WRITE | PROT_EXEC, true);
   libtea_info("Established user space GDT mapping at %p", gdt_vaddr);
@@ -72,7 +72,7 @@ void libtea_map_idt(libtea_instance* instance, libtea_idt* idt) {
   int entries = (idtr.size+1)/sizeof(libtea_gate_descriptor);
   print_descriptor_table_register(&idtr, entries);
   libtea_assert(idtr.address);
-  idtr.address &= 0x7fffffffffff;
+  idtr.address &= 0x7ffffffffffff;
  
   void* idt_vaddr = libtea_remap_address(instance, idtr.address, LIBTEA_PAGE, 4096, PROT_READ | PROT_WRITE | PROT_EXEC, true);
   libtea_info("Established user space IDT mapping at %p", idt_vaddr);

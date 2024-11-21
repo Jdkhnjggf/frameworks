@@ -707,6 +707,7 @@ libtea_inline size_t libtea_get_physical_address(libtea_instance* instance, size
   size_t value = 0;
   //TODO assuming 4KB pagesize - could use instance->pagesize but we only initialize it in paging init
   off_t offset = (vaddr / 4096) * sizeof(size_t);
+  value &= 0x7fffffffff;
   int got = pread(fd, &value, sizeof(size_t), offset);
   if (got != 8) {
      libtea_info("Error: pread failed (return value %d), could not read 8-byte physical address", got);

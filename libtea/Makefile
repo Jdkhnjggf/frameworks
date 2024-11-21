@@ -99,14 +99,14 @@ libtea-x86-paging:
 
 #Interrupt functionality depends on paging functionality
 libtea-x86-interrupts: say-interrupts
-	#rm -f libtea.h
+	# rm -f libtea.h
 	rm -f libtea_irq_entry.o
 	rm -f tests/test-basic
 	rm -f tests/test-cache
 	rm -f tests/utest-paging/utest-paging
 	rm -f tests/test-interrupts
 	$(AS) -o libtea_irq_entry.o -c src/arch/x86/asm/libtea_irq_entry.S
-	#cat ../../LICENSE configs/cache_paging_interrupts_config.h libtea_config.h module/libtea_ioctl.h include/libtea_common.h include/arch/libtea_arch.h include/libtea_cache.h include/arch/libtea_arch_paging.h include/arch/x86/libtea_x86_paging.h include/libtea_paging.h include/libtea_interrupts.h src/libtea_common.c src/arch/x86/libtea_x86_common.c src/libtea_cache.c src/arch/x86/libtea_x86_cache.c src/libtea_paging.c src/arch/x86/libtea_x86_paging.c src/libtea_interrupts.c FOOTER | sed 's/#include ".*"//g' > libtea.h
+	# cat ../../LICENSE configs/cache_paging_interrupts_config.h libtea_config.h module/libtea_ioctl.h include/libtea_common.h include/arch/libtea_arch.h include/libtea_cache.h include/arch/libtea_arch_paging.h include/arch/x86/libtea_x86_paging.h include/libtea_paging.h include/libtea_interrupts.h src/libtea_common.c src/arch/x86/libtea_x86_common.c src/libtea_cache.c src/arch/x86/libtea_x86_cache.c src/libtea_paging.c src/arch/x86/libtea_x86_paging.c src/libtea_interrupts.c FOOTER | sed 's/#include ".*"//g' > libtea.h
 	cp libtea.h doc/libtea.h
 	$(CC) $(ENCLAVE_CFLAGS) tests/test-basic.c libtea_irq_entry.o -I. -o tests/test-basic
 	$(CC) $(ENCLAVE_CFLAGS) tests/test-cache.c libtea_irq_entry.o -I. -o tests/test-cache

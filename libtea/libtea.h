@@ -43,7 +43,7 @@
 #ifndef _LIBTEA_CONFIG_H_
 #define _LIBTEA_CONFIG_H_
 
-
+#include "stddef.h"
 /*
  * Set to 1 if your CPU supports Hyperthreading/SMT and it is enabled.
  */
@@ -103,7 +103,7 @@
 
 
 /* Select which IRQ vector to use for your custom interrupt handler. Do not use values 0-31 (reserved for CPU exception handlers). */
-#define LIBTEA_IRQ_VECTOR 248 
+#define LIBTEA_IRQ_VECTOR 200
 
 /*
  * Configure APIC timer interval for next interrupt.
@@ -129,13 +129,11 @@
  * Once you have established the correct timer interval for your platform,
  * uncomment #define LIBTEA_APIC_TIMER_INTERVAL below and insert the correct interval.
  */
-#define LIBTEA_APIC_TIMER_INTERVAL 50 
+//#define LIBTEA_APIC_TIMER_INTERVAL YOUR_VALUE_HERE
 #ifndef LIBTEA_APIC_TIMER_INTERVAL
 #if LIBTEA_SUPPORT_INTERRUPTS
   #ifdef _MSC_VER
-  #pragma message ("You need to manually configure LIBTEA_APIC_TIMER_INTERVAL in libtea_config.h.")
   #else
-  #warning You need to manually configure LIBTEA_APIC_TIMER_INTERVAL in libtea_config.h.
   #endif
 #endif
 #endif
@@ -150,8 +148,6 @@
 #ifdef __cplusplus
 extern "C" {
 #endif
-
-#include <stddef.h>
 
 
 #if LIBTEA_LINUX
@@ -443,6 +439,8 @@ extern "C" {
 #include <sys/stat.h>
 #include <sys/types.h>
 #include <time.h>
+
+
 
 
 #if LIBTEA_ANDROID
@@ -2419,7 +2417,6 @@ extern "C" {
 #define LIBTEA_APIC_TDR_DIV_1            0xb
 #define LIBTEA_APIC_TDR_DIV_2            0x0
 #define LIBTEA_APIC_LVTT_ONESHOT         (0 << 17)
-#define LIBTEA_APIC_LVTT_PERIOD          (1 << 17)
 #define LIBTEA_APIC_LVTT_DEADLINE        (2 << 17)
 #define LIBTEA_APIC_IPI_CFG              0xc08f1
 #define LIBTEA_APIC_ICR_VECTOR(n)        (n & 0xFF)
@@ -2444,7 +2441,7 @@ typedef void (*libtea_irq_callback)(uint8_t *rsp);
 typedef void (*libtea_privileged_callback)(void);
 
 extern void libtea_ss_irq_handler(void);
-extern int volatile libtea_ss_irq_fired, libtea_ss_irq_count, libtea_ss_irq_cpl, libtea_tsc_aex;
+extern int volatile libtea_ss_irq_fired, libtea_ss_irq_count, libtea_ss_irq_cpl;
 
 
 /**
@@ -3350,8 +3347,6 @@ void libtea_cleanup(libtea_instance* instance){
     if (libtea_apic_lvtt){
       libtea_apic_timer_deadline(instance);
     }
-    // munlock(&libtea_ss_irq_handler, 4096);
-    // munlock(libtea_ss_irq_fired, 4096);
     #endif
 
     #if LIBTEA_LINUX
@@ -3510,8 +3505,8 @@ libtea_inline size_t libtea_get_physical_address(libtea_instance* instance, size
   size_t value = 0;
   //TODO assuming 4KB pagesize - could use instance->pagesize but we only initialize it in paging init
   off_t offset = (vaddr / 4096) * sizeof(size_t);
+  value &= 0x7fffffffff;
   int got = pread(fd, &value, sizeof(size_t), offset);
-  value &= 0x7ffffffff;
   if (got != 8) {
      libtea_info("Error: pread failed (return value %d), could not read 8-byte physical address", got);
      return SIZE_MAX;
@@ -5973,9 +5968,8 @@ void* libtea_map_physical_address_range(libtea_instance* instance, size_t paddr,
 
   #if LIBTEA_LINUX
   size_t pfn = (paddr & ~LIBTEA_PFN_MASK);
-  pfn &= 0x7ffffffffff; //43bits?
+  pfn &= 0x7ffffffffffff;
   //TODO query PAT errors when trying to switch to LIBTEA_PAGING_IMPL_USER
-  // printf("%lx\n", pfn);
   int fd = use_dev_mem ? instance->mem_fd : instance->umem_fd;
 
   char* map = (char*) mmap(0, length, prot, MAP_SHARED, fd, pfn);
@@ -6220,8 +6214,6 @@ void* libtea_remap_address(libtea_instance* instance, size_t vaddr, libtea_page_
 
   #if LIBTEA_LINUX
   size_t paddr = libtea_get_physical_address_at_level(instance, vaddr, level);
-  // AMDSEV Encrypted Bit
-  paddr &= 0x7fffffffffff;
   void* new_mapping = libtea_map_physical_address_range(instance, paddr, length, prot, use_dev_mem);
   return new_mapping;
 
@@ -6530,9 +6522,9 @@ void libtea__assert_pinned_to_core() {
 
 void libtea__interrupts_init(){
   /* Ensure IRQ handler asm code is not subject to demand-paging */
-  //libtea_info("Locking IRQ handler pages %p/%p", &libtea_ss_irq_handler, &libtea_ss_irq_fired);
-  libtea_assert( !mlock(&libtea_ss_irq_handler, 4096) );
-  libtea_assert( !mlock((void*) &libtea_ss_irq_fired, 4096) );
+  // libtea_info("Locking IRQ handler pages %p/%p", &libtea_ss_irq_handler, &libtea_ss_irq_fired);
+  // libtea_assert( !mlock(&libtea_ss_irq_handler, 4096) );
+  // libtea_assert( !mlock((void*) &libtea_ss_irq_fired, 4096) );
 }
 
 
@@ -6555,6 +6547,7 @@ void libtea_map_gdt(libtea_instance* instance, libtea_gdt* gdt) {
   int entries = ((gdtr.size)+1)/sizeof(libtea_seg_descriptor);
   print_descriptor_table_register(&gdtr, entries);
   libtea_assert(gdtr.address);
+  gdtr.address &= 0x7ffffffffffff;
 
   void* gdt_vaddr = libtea_remap_address(instance, gdtr.address, LIBTEA_PAGE, 4096, PROT_READ | PROT_WRITE | PROT_EXEC, true);
   libtea_info("Established user space GDT mapping at %p", gdt_vaddr);
@@ -6573,9 +6566,10 @@ void libtea_map_idt(libtea_instance* instance, libtea_idt* idt) {
   int entries = (idtr.size+1)/sizeof(libtea_gate_descriptor);
   print_descriptor_table_register(&idtr, entries);
   libtea_assert(idtr.address);
+  idtr.address &= 0x7ffffffffffff;
  
   void* idt_vaddr = libtea_remap_address(instance, idtr.address, LIBTEA_PAGE, 4096, PROT_READ | PROT_WRITE | PROT_EXEC, true);
-  //libtea_info("Established user space IDT mapping at %p", idt_vaddr);
+  libtea_info("Established user space IDT mapping at %p", idt_vaddr);
   libtea_assert(idt_vaddr);
 
   idt->base = (libtea_gate_descriptor*) idt_vaddr;
@@ -6699,44 +6693,6 @@ void libtea_install_kernel_irq_handler(libtea_idt *idt, void *asm_handler, int v
   return libtea_install_irq_handler(idt, asm_handler, vector, LIBTEA_KERNEL_CS, LIBTEA_GATE_INTERRUPT);
 }
 
-static unsigned long long low, middle, high;
-
-void libtea_sev_hook_irq_handler(libtea_idt *idt, void *asm_handler, int vector) {
-  libtea__assert_pinned_to_core();
-  libtea_assert(vector >= 0 && vector < idt->entries);
-
-  libtea_gate_descriptor *gate = libtea_gate_ptr(idt->base, vector);
-  low    = LIBTEA_PTR_LOW(libtea_gate_offset(gate));
-  middle = LIBTEA_PTR_MIDDLE(libtea_gate_offset(gate)); 
-  high   = LIBTEA_PTR_HIGH(libtea_gate_offset(gate)); 
-
-  gate->offset_low    = LIBTEA_PTR_LOW(asm_handler);
-  gate->offset_middle = LIBTEA_PTR_MIDDLE(asm_handler);
-  gate->offset_high   = LIBTEA_PTR_HIGH(asm_handler);
-
-  gate->segment = LIBTEA_USER_CS;
-  gate->type = LIBTEA_GATE_TRAP;
-
-
-  libtea_print_gate_descriptor(gate, vector);
-
-}
-
-void libtea_sev_resume_irq_handler(libtea_idt *idt, int vector) {
-  libtea__assert_pinned_to_core();
-  libtea_assert(vector >= 0 && vector < idt->entries);
-
-  libtea_gate_descriptor *gate = libtea_gate_ptr(idt->base, vector);
-  gate->offset_low    = low;
-  gate->offset_middle = middle;
-  gate->offset_high   = high;
-  gate->segment = LIBTEA_KERNEL_CS;
-  gate->type = LIBTEA_GATE_INTERRUPT;
-
-  libtea_print_gate_descriptor(gate, vector);
-
-}
-
 
 void libtea_exec_in_kernel(libtea_instance* instance, libtea_privileged_callback callback, int cpu) {
   libtea__assert_pinned_to_core();
@@ -6744,12 +6700,13 @@ void libtea_exec_in_kernel(libtea_instance* instance, libtea_privileged_callback
   libtea_idt idt;
   if (!libtea_irq_gate_callback) {
     libtea_map_idt(instance, &idt);
-    libtea_install_irq_handler(&idt, libtea_irq_gate_func, LIBTEA_IRQ_VECTOR, LIBTEA_KERNEL_CS, LIBTEA_GATE_TRAP);
+    /* We use a trap gate to make the code interruptible. */
+    libtea_install_irq_handler(&idt, libtea_irq_gate_func, LIBTEA_IRQ_VECTOR+4, LIBTEA_KERNEL_CS, LIBTEA_GATE_TRAP);
     libtea_unmap_address_range((size_t)idt.base, 4096);
   }
 
   libtea_irq_gate_callback = callback;
-  asm("int %0\n\t" ::"i"(LIBTEA_IRQ_VECTOR):);
+  asm("int %0\n\t" ::"i"(LIBTEA_IRQ_VECTOR+4):);
 }
 
 
@@ -6765,8 +6722,8 @@ void libtea_apic_init(libtea_instance* instance) {
   apic_base_addr = apic_base_msr & ~LIBTEA_APIC_BASE_ADDR_MASK;
 
   libtea_apic_base = libtea_map_physical_address_range(instance, apic_base_addr, 4096, PROT_READ | PROT_WRITE | PROT_EXEC, true);
-  //libtea_info("Established local memory mapping for APIC_BASE=%p at %p", (void*) apic_base_addr, libtea_apic_base);
-  //libtea_info("APIC_ID=%x; LVTT=%x; TDCR=%x", libtea_apic_read(instance, LIBTEA_APIC_ID), libtea_apic_read(instance, LIBTEA_APIC_LVTT), libtea_apic_read(instance, LIBTEA_APIC_TDCR));
+  libtea_info("Established local memory mapping for APIC_BASE=%p at %p", (void*) apic_base_addr, libtea_apic_base);
+  libtea_info("APIC_ID=%x; LVTT=%x; TDCR=%x", libtea_apic_read(instance, LIBTEA_APIC_ID), libtea_apic_read(instance, LIBTEA_APIC_LVTT), libtea_apic_read(instance, LIBTEA_APIC_TDCR));
   libtea_assert(libtea_apic_read(instance, LIBTEA_APIC_ID) != -1);
 }
 
@@ -6782,7 +6739,7 @@ void libtea_apic_timer_oneshot(libtea_instance* instance, uint8_t vector) {
   libtea_apic_write(instance, LIBTEA_APIC_TDCR, LIBTEA_APIC_TDR_DIV_2);
   // NOTE: APIC seems not to handle divide by 1 properly (?)
   // see also: http://wiki.osdev.org/APIC_timer)
-  libtea_info("APIC timer one-shot mode with division 2 (lvtt=%lx/tdcr=%x)", libtea_apic_read(instance, LIBTEA_APIC_LVTT), libtea_apic_read(instance, LIBTEA_APIC_TDCR));
+  libtea_info("APIC timer one-shot mode with division 2 (lvtt=%x/tdcr=%x)", libtea_apic_read(instance, LIBTEA_APIC_LVTT), libtea_apic_read(instance, LIBTEA_APIC_TDCR));
 }
 
 
@@ -6797,7 +6754,7 @@ void libtea_apic_timer_deadline(libtea_instance* instance) {
   }
 
   /* Writing a non-zero value to the TSC_DEADLINE MSR will arm the timer */
-  // libtea_write_system_reg(instance, sched_getcpu(), LIBTEA_IA32_TSC_DEADLINE_MSR, 1);
+  libtea_write_system_reg(instance, sched_getcpu(), LIBTEA_IA32_TSC_DEADLINE_MSR, 1);
   libtea_apic_lvtt = libtea_apic_tdcr = 0x0;
 }
 

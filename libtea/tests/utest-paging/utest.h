@@ -58,7 +58,7 @@ typedef int64_t utest_int64_t;
 typedef uint64_t utest_uint64_t;
 #endif
 
-#include <stddef.h>
+#include "stddef.h"
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>

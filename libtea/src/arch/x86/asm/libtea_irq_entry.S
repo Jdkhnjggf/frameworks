@@ -24,23 +24,42 @@ libtea_ss_irq_rdx:
     .quad 0x0
 
 /* ********************************************************************** */
+//     .text
+//     .align 0x1000
+//     .global libtea_ss_irq_handler
+// libtea_ss_irq_handler:
+//     /* IRQ latency timestamp */
+//     mov %rax, libtea_ss_irq_rax(%rip)
+//     mov %rdx, libtea_ss_irq_rdx(%rip)
+//     rdtsc
+//     mov %eax, libtea_tsc_aex(%rip)
+
+//     /* IRQ bookkeeping */
+//     incl libtea_ss_irq_fired(%rip)
+//     incl libtea_ss_irq_count(%rip)
+//     movw %cs,  libtea_ss_irq_cpl(%rip)
+//     andw $0x3, libtea_ss_irq_cpl(%rip)
+
+//     /* libtea_apic_write(APIC_EOI, 0x0); */
+//     lea libtea_apic_base(%rip), %rax
+//     mov (%rax),%rax
+//     test %rax, %rax
+//     jz 1f
+//     add $0xb0, %rax
+//     movl $0x0, (%rax)
+// 1:
+//     mov libtea_ss_irq_rax(%rip), %rax
+//     mov libtea_ss_irq_rdx(%rip), %rdx
+//     iretq
     .text
+    ;.section isr_section,"awx",@progbits
     .align 0x1000
     .global libtea_ss_irq_handler
 libtea_ss_irq_handler:
-    /* IRQ latency timestamp */
-    mov %rax, libtea_ss_irq_rax(%rip)
-    mov %rdx, libtea_ss_irq_rdx(%rip)
-    rdtsc
-    mov %eax, libtea_tsc_aex(%rip)
 
-    /* IRQ bookkeeping */
-    incl libtea_ss_irq_fired(%rip)
     incl libtea_ss_irq_count(%rip)
-    movw %cs,  libtea_ss_irq_cpl(%rip)
-    andw $0x3, libtea_ss_irq_cpl(%rip)
 
-    /* libtea_apic_write(APIC_EOI, 0x0); */
+    /* apic_write(APIC_EOI, 0x0); */
     lea libtea_apic_base(%rip), %rax
     mov (%rax),%rax
     test %rax, %rax
@@ -48,8 +67,6 @@ libtea_ss_irq_handler:
     add $0xb0, %rax
     movl $0x0, (%rax)
 1:
-    mov libtea_ss_irq_rax(%rip), %rax
-    mov libtea_ss_irq_rdx(%rip), %rdx
     iretq
 
 /* ********************************************************************** */

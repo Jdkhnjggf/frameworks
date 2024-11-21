@@ -107,6 +107,11 @@ typedef long (*ioctl_t)(struct file *filep, unsigned int cmd, unsigned long arg)
 static bool mm_is_locked = false;
 int device_busy = 0;
 
+#if LINUX_VERSION_CODE < KERNEL_VERSION(5, 6, 0)
+#define pud_leaf pud_large
+#define pmd_leaf pmd_large
+#endif
+
 
 /* Libtea common functionality
 ============================================================================================*/
@@ -238,6 +243,9 @@ static void _flush_tlb(void *addr) {
   unsigned long cr4;
 
   #if LINUX_VERSION_CODE >= KERNEL_VERSION(3, 2, 98)
+  #ifndef X86_FEATURE_INVPCID_SINGLE
+  #define X86_FEATURE_INVPCID_SINGLE X86_FEATURE_INVPCID
+  #endif
   #if defined(X86_FEATURE_INVPCID_SINGLE) && defined(INVPCID_TYPE_INDIV_ADDR)
   if (cpu_feature_enabled(X86_FEATURE_INVPCID_SINGLE)) {
     for(pcid = 0; pcid < 4096; pcid++) {
@@ -408,15 +416,19 @@ static int resolve_vm(size_t addr, vm_t* entry, int lock) {
 
   /* Get offset of PMD (page middle directory) */
   entry->pmd = pmd_offset(entry->pud, addr);
-  if (pmd_none(*(entry->pmd)) || pud_large(*(entry->pud))) {
+  if (pmd_none(*(entry->pmd)) || pud_leaf(*(entry->pud))) {
     entry->pmd = NULL;
     goto error_out;
   }
   entry->valid |= LIBTEA_VALID_MASK_PMD;
 
   /* Map PTE (page table entry) */
+#if LINUX_VERSION_CODE < KERNEL_VERSION(6, 5, 0)
   entry->pte = pte_offset_map(entry->pmd, addr);
-  if (entry->pte == NULL || pmd_large(*(entry->pmd))) {
+#else
+  entry->pte = pte_offset_kernel(entry->pmd, addr);
+#endif
+  if (entry->pte == NULL || pmd_leaf(*(entry->pmd))) {
     entry->pte = NULL;
     goto error_out;
   }

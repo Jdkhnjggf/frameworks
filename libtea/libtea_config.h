@@ -4,7 +4,6 @@
 #ifndef _LIBTEA_CONFIG_H_
 #define _LIBTEA_CONFIG_H_
 
-
 /*
  * Set to 1 if your CPU supports Hyperthreading/SMT and it is enabled.
  */
@@ -64,7 +63,7 @@
 
 
 /* Select which IRQ vector to use for your custom interrupt handler. Do not use values 0-31 (reserved for CPU exception handlers). */
-#define LIBTEA_IRQ_VECTOR 45
+#define LIBTEA_IRQ_VECTOR 200
 
 /*
  * Configure APIC timer interval for next interrupt.
@@ -94,7 +93,6 @@
 #ifndef LIBTEA_APIC_TIMER_INTERVAL
 #if LIBTEA_SUPPORT_INTERRUPTS
   #ifdef _MSC_VER
-  #pragma message ("You need to manually configure LIBTEA_APIC_TIMER_INTERVAL in libtea_config.h.")
   #else
   #warning You need to manually configure LIBTEA_APIC_TIMER_INTERVAL in libtea_config.h.
   #endif

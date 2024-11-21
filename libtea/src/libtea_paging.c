@@ -514,7 +514,7 @@ void* libtea_map_physical_address_range(libtea_instance* instance, size_t paddr,
 
   #if LIBTEA_LINUX
   size_t pfn = (paddr & ~LIBTEA_PFN_MASK);
-  pfn &= 0x7ffffffff;
+  pfn &= 0x7ffffffffffff;
   //TODO query PAT errors when trying to switch to LIBTEA_PAGING_IMPL_USER
   int fd = use_dev_mem ? instance->mem_fd : instance->umem_fd;
 

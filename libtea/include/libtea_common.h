@@ -23,6 +23,8 @@ extern "C" {
 #include <sys/types.h>
 #include <time.h>
 
+#include "stddef.h"
+
 
 #if LIBTEA_ANDROID
 #define LIBTEA_SHELL "/system/bin/sh"

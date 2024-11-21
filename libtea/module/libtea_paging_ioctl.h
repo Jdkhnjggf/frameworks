@@ -14,7 +14,7 @@ extern "C" {
 
 #if !defined(__KERNEL__)
 #include <stdint.h>
-#include <stddef.h>
+#include "stddef.h"
 #endif
 
 
